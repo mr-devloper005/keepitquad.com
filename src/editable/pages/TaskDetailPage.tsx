@@ -8,6 +8,7 @@ import type { SitePost } from '@/lib/site-connector'
 import { EditableSiteShell } from '@/editable/shell/EditableSiteShell'
 import { EditableArticleComments } from '@/editable/components/EditableArticleComments'
 import { getTaskTheme, taskThemeStyle } from '@/editable/theme/task-themes'
+import { Ads } from '@/lib/ads'
 
 export const revalidate = 3
 
@@ -31,6 +32,7 @@ export async function EditableTaskDetailRoute({ task, params }: { task: TaskKey;
 const getContent = (post: SitePost) => post.content && typeof post.content === 'object' ? post.content as Record<string, unknown> : {}
 const asText = (value: unknown) => typeof value === 'string' ? value.trim() : ''
 const isUrl = (value: string) => value.startsWith('/') || /^https?:\/\//i.test(value)
+const cleanDomain = (value: string) => value.replace(/^https?:\/\//, '').replace(/\/$/, '')
 
 const getField = (post: SitePost, keys: string[]) => {
   const content = getContent(post)
@@ -122,7 +124,7 @@ export function TaskDetailView({ task, post, related, comments = [] }: { task: T
         {task === 'image' ? <ImageDetail post={post} related={related} /> : null}
         {task === 'sbm' ? <BookmarkDetail post={post} related={related} /> : null}
         {task === 'pdf' ? <PdfDetail post={post} related={related} /> : null}
-        {task === 'profile' ? <ProfileDetail post={post} related={related} /> : null}
+        {task === 'profile' ? <ProfileDetail post={post} /> : null}
         {task === 'article' ? <ArticleDetail post={post} related={related} comments={comments} /> : null}
       </main>
     </EditableSiteShell>
@@ -243,7 +245,7 @@ function ListingDetail({ post, related }: { post: SitePost; related: SitePost[] 
         <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
           {mapSrc ? <MapBox src={mapSrc} label={address || post.title} /> : null}
           <ContactAction website={website} phone={phone} email={email} />
-          <RelatedPanel task="listing" post={post} related={related} />
+          <RelatedPanel task="listing" related={related} />
         </aside>
       </div>
     </section>
@@ -264,7 +266,7 @@ function ClassifiedDetail({ post, related }: { post: SitePost; related: SitePost
       <section className="mx-auto grid max-w-[var(--editable-container)] gap-10 px-6 py-14 sm:py-20 lg:grid-cols-[360px_minmax(0,1fr)] lg:px-8">
         <aside className="lg:sticky lg:top-24 lg:self-start">
           <BackLink task="classified" />
-          <div className="mt-7 rounded-[var(--tk-radius)] border border-[var(--tk-line)] bg-[var(--tk-surface)] p-7 shadow-[0_22px_60px_rgba(15,23,42,0.08)]">
+          <div className="mt-7 rounded-[var(--tk-radius)] border border-[var(--tk-line)] bg-[var(--tk-surface)] p-7 shadow-[0_22px_60px_-26px_rgba(13,19,16,0.30)]">
             <Kicker task="classified">Classified</Kicker>
             <h1 className="editable-display mt-4 text-2xl font-semibold leading-tight tracking-[-0.02em]">{post.title}</h1>
             <DetailMeta post={post} category={getField(post, ['category'])} />
@@ -336,6 +338,7 @@ function BookmarkDetail({ post, related }: { post: SitePost; related: SitePost[]
           </Link>
         ) : null}
         <BodyContent post={post} />
+        <Ads slot="article-bottom" showLabel className="mt-12 w-full" />
       </article>
       <RelatedStrip task="sbm" related={related} />
     </>
@@ -376,43 +379,104 @@ function PdfDetail({ post, related }: { post: SitePost; related: SitePost[] }) {
               <Link href={fileUrl} target="_blank" rel="noreferrer" className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[var(--tk-accent)] px-5 py-3 text-sm font-semibold text-[var(--tk-on-accent)] transition hover:opacity-90">Download <Download className="h-4 w-4" /></Link>
             </div>
           ) : null}
-          <RelatedPanel task="pdf" post={post} related={related} />
+          <RelatedPanel task="pdf" related={related} />
         </aside>
       </div>
     </section>
   )
 }
 
-// ----- Profile: identity-first with a sticky portrait -----
-function ProfileDetail({ post, related }: { post: SitePost; related: SitePost[] }) {
+// ----- Profile: a premium, self-contained member page. Reachable by direct
+// URL only — it never links back to a profile archive or surfaces other
+// profiles, keeping profiles out of the public browsing experience. -----
+function ProfileDetail({ post }: { post: SitePost }) {
   const images = getImages(post)
-  const role = getField(post, ['role', 'designation', 'company', 'location'])
+  const avatar = images[0]
+  const gallery = images.slice(1)
+  const role = getField(post, ['role', 'designation', 'company'])
+  const location = getField(post, ['location', 'city', 'address'])
   const website = getField(post, ['website', 'url'])
   const email = getField(post, ['email'])
+  const phone = getField(post, ['phone', 'telephone', 'mobile'])
+  const facts: Array<[string, string, typeof Globe2]> = [
+    ['Location', location, MapPin],
+    ['Website', website ? cleanDomain(website) : '', Globe2],
+    ['Email', email, Mail],
+    ['Phone', phone, Phone],
+  ]
+  const visibleFacts = facts.filter(([, value]) => value)
+
   return (
     <>
-      <section className="mx-auto max-w-[var(--editable-container)] px-6 py-14 sm:py-20 lg:px-8">
-        <BackLink task="profile" />
-        <div className="mt-8 grid gap-10 lg:grid-cols-[360px_minmax(0,1fr)]">
-          <aside className="lg:sticky lg:top-24 lg:self-start">
-            <div className="rounded-[var(--tk-radius)] border border-[var(--tk-line)] bg-[var(--tk-surface)] p-8 text-center shadow-[0_22px_60px_rgba(15,23,42,0.08)]">
-              <div className="mx-auto flex h-32 w-32 items-center justify-center overflow-hidden rounded-full border border-[var(--tk-line)] bg-[var(--tk-raised)]">
-                {images[0] ? <img src={images[0]} alt="" className="h-full w-full object-cover" /> : <UserRound className="h-14 w-14 text-[var(--tk-muted)]" />}
-              </div>
-              <h1 className="editable-display mt-6 text-2xl font-semibold tracking-[-0.02em]">{post.title}</h1>
-              {role ? <p className="mt-2 text-xs font-medium uppercase tracking-[0.16em] text-[var(--tk-accent)]">{role}</p> : null}
-              <DetailMeta post={post} center />
-              <ContactAction website={website} email={email} bare />
+      {/* Hero */}
+      <section className="relative overflow-hidden bg-[var(--slot4-dark-bg)] text-[var(--slot4-dark-text)]">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(110%_90%_at_18%_0%,rgba(11,171,91,0.24),transparent_55%)]" />
+        <div className="relative mx-auto max-w-[var(--editable-container)] px-5 py-12 sm:px-6 sm:py-16 lg:px-8">
+          <Link href="/" className="inline-flex items-center gap-1.5 text-sm font-medium text-white/70 transition hover:text-white">
+            <ArrowLeft className="h-4 w-4" /> Back to {SITE_CONFIG.name}
+          </Link>
+          <div className="mt-8 flex flex-col items-start gap-6 sm:flex-row sm:items-end">
+            <div className="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-3xl border border-[var(--slot4-dark-border)] bg-white/5 ring-4 ring-[var(--slot4-accent-fill)]/30 sm:h-36 sm:w-36">
+              {avatar ? <img src={avatar} alt={post.title} className="h-full w-full object-cover" /> : <UserRound className="h-16 w-16 text-white/60" />}
             </div>
-          </aside>
-          <article className="min-w-0">
-            <Kicker task="profile">Profile</Kicker>
-            <BodyContent post={post} />
-            <ImageStrip images={images.slice(1)} label="Gallery" />
-          </article>
+            <div className="min-w-0">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--slot4-accent-fill)] px-3.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--slot4-on-accent)]">
+                <CheckCircle2 className="h-3.5 w-3.5" /> {SITE_CONFIG.name} member
+              </span>
+              <h1 className="editable-display mt-4 text-4xl font-extrabold leading-[1.05] tracking-[-0.02em] sm:text-5xl">{post.title}</h1>
+              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-white/70">
+                {role ? <span className="font-medium text-[var(--slot4-accent-bright)]">{role}</span> : null}
+                {location ? <span className="inline-flex items-center gap-1.5"><MapPin className="h-4 w-4" /> {location}</span> : null}
+              </div>
+            </div>
+          </div>
+          {(website || email || phone) ? (
+            <div className="mt-7 flex flex-wrap gap-3">
+              {website ? <Link href={website} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full bg-[var(--slot4-accent-fill)] px-5 py-2.5 text-sm font-semibold text-[var(--slot4-on-accent)] transition duration-300 hover:brightness-110">Visit website <ExternalLink className="h-4 w-4" /></Link> : null}
+              {email ? <a href={`mailto:${email}`} className="inline-flex items-center gap-2 rounded-full border border-[var(--slot4-dark-border)] px-5 py-2.5 text-sm font-semibold text-white transition hover:border-[var(--slot4-accent-bright)] hover:text-[var(--slot4-accent-bright)]"><Mail className="h-4 w-4" /> Email</a> : null}
+              {phone ? <a href={`tel:${phone}`} className="inline-flex items-center gap-2 rounded-full border border-[var(--slot4-dark-border)] px-5 py-2.5 text-sm font-semibold text-white transition hover:border-[var(--slot4-accent-bright)] hover:text-[var(--slot4-accent-bright)]"><Phone className="h-4 w-4" /> Call</a> : null}
+            </div>
+          ) : null}
         </div>
       </section>
-      <RelatedStrip task="profile" related={related} />
+
+      {/* Body */}
+      <section className="mx-auto max-w-[var(--editable-container)] px-5 py-14 sm:px-6 sm:py-16 lg:px-8">
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_330px] lg:items-start">
+          <article className="min-w-0">
+            <h2 className="editable-display text-xl font-bold tracking-[-0.02em]">About</h2>
+            <BodyContent post={post} />
+            <ImageStrip images={gallery} label="Gallery" />
+          </article>
+
+          <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
+            {visibleFacts.length ? (
+              <div className="rounded-[var(--tk-radius)] border border-[var(--tk-line)] bg-[var(--tk-surface)] p-6">
+                <p className="text-xs font-medium uppercase tracking-[0.2em] text-[var(--tk-muted)]">Details</p>
+                <div className="mt-4 grid gap-3.5">
+                  {visibleFacts.map(([label, value, Icon]) => (
+                    <div key={label} className="flex items-start gap-3">
+                      <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--tk-accent-soft)] text-[var(--tk-accent)]"><Icon className="h-4 w-4" /></span>
+                      <span className="min-w-0">
+                        <span className="block text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--tk-muted)]">{label}</span>
+                        <span className="block break-words text-sm font-semibold text-[var(--tk-text)]">{value}</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            <div className="overflow-hidden rounded-[var(--tk-radius)] bg-[var(--slot4-dark-bg)] p-6 text-[var(--slot4-dark-text)]">
+              <p className="editable-display text-lg font-bold tracking-[-0.01em]">Discover more on {SITE_CONFIG.name}</p>
+              <p className="mt-2 text-sm leading-6 text-white/70">Browse hand-picked collections and resources from across the community.</p>
+              <Link href="/sbm" className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[var(--slot4-accent-fill)] px-5 py-3 text-sm font-semibold text-[var(--slot4-on-accent)] transition duration-300 hover:brightness-110">
+                Explore collections <ArrowUpRight className="h-4 w-4" />
+              </Link>
+            </div>
+            <Ads slot="sidebar" showLabel className="w-full" />
+          </aside>
+        </div>
+      </section>
     </>
   )
 }
@@ -494,7 +558,7 @@ function BadgeLine({ label, value }: { label: string; value: string }) {
   )
 }
 
-function RelatedPanel({ task, post, related }: { task: TaskKey; post: SitePost; related: SitePost[] }) {
+function RelatedPanel({ task, related }: { task: TaskKey; related: SitePost[] }) {
   const taskConfig = getTaskConfig(task)
   return (
     <div className="space-y-6">

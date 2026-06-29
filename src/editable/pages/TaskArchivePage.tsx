@@ -9,6 +9,7 @@ import { taskPageMetadata } from '@/config/site.content'
 import { taskPageVoices } from '@/editable/content/task-pages.content'
 import { EditableSiteShell } from '@/editable/shell/EditableSiteShell'
 import { getTaskTheme, taskThemeStyle } from '@/editable/theme/task-themes'
+import { Ads } from '@/lib/ads'
 
 export const revalidate = 3
 
@@ -66,7 +67,7 @@ const taskGrid: Record<TaskKey, string> = {
 }
 
 // Shared premium surface: hairline border, soft radius, smooth lift on hover.
-const cardBase = 'group block rounded-[var(--tk-radius)] border border-[var(--tk-line)] bg-[var(--tk-surface)] transition duration-500 hover:-translate-y-1.5 hover:shadow-[0_32px_72px_rgba(15,23,42,0.14)]'
+const cardBase = 'group block rounded-[var(--tk-radius)] border border-[var(--tk-line)] bg-[var(--tk-surface)] shadow-[0_1px_2px_rgba(13,19,16,0.04)] transition duration-500 hover:-translate-y-1.5 hover:border-[var(--tk-accent)]/40 hover:shadow-[0_28px_60px_-24px_rgba(13,19,16,0.35)]'
 
 export async function EditableTaskArchiveRoute({
   task,
@@ -98,13 +99,13 @@ export function TaskArchiveView({ task, posts, pagination, category, basePath }:
       <main style={taskThemeStyle(task)} className="min-h-screen bg-[var(--tk-bg)] text-[var(--tk-text)]">
         <header className="relative overflow-hidden border-b border-[var(--tk-line)]">
           <div className="pointer-events-none absolute inset-x-0 -top-40 h-96 bg-[radial-gradient(60%_60%_at_50%_0%,var(--tk-glow),transparent_70%)]" />
-          <div className="relative mx-auto max-w-[var(--editable-container)] px-6 py-20 sm:py-28 lg:px-8">
-            <div className="flex items-center gap-3 text-[11px] font-medium uppercase tracking-[0.34em] text-[var(--tk-accent)]">
+          <div data-reveal className="relative mx-auto max-w-[var(--editable-container)] px-5 py-20 sm:px-6 sm:py-28 lg:px-8">
+            <div className="inline-flex items-center gap-3 rounded-full border border-[var(--tk-line)] bg-[var(--tk-surface)] px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--tk-accent)]">
               <span>{theme.kicker}</span>
-              <span className="h-1 w-1 rounded-full bg-[var(--tk-accent)] opacity-50" />
+              <span className="h-1 w-1 rounded-full bg-[var(--tk-accent)] opacity-60" />
               <span className="text-[var(--tk-muted)]">{label}</span>
             </div>
-            <h1 className="editable-display mt-6 max-w-3xl text-balance text-[2.5rem] font-semibold leading-[1.06] tracking-[-0.03em] sm:text-5xl lg:text-6xl">
+            <h1 className="editable-display mt-6 max-w-3xl text-balance text-[2.5rem] font-bold leading-[1.04] tracking-[-0.03em] sm:text-5xl lg:text-6xl">
               {voice?.headline || `Browse ${label}`}
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-[var(--tk-muted)]">{voice?.description || theme.note}</p>
@@ -139,9 +140,15 @@ export function TaskArchiveView({ task, posts, pagination, category, basePath }:
           </div>
         </header>
 
-        <section className="mx-auto max-w-[var(--editable-container)] px-6 py-16 sm:py-20 lg:px-8">
+        {task === 'sbm' ? (
+          <div className="mx-auto w-full max-w-[var(--editable-container)] px-5 pt-12 sm:px-6 lg:px-8">
+            <Ads slot="in-feed" showLabel eager className="mx-auto w-full" />
+          </div>
+        ) : null}
+
+        <section className="mx-auto max-w-[var(--editable-container)] px-5 py-16 sm:px-6 sm:py-20 lg:px-8">
           {posts.length ? (
-            <div className={taskGrid[task]}>
+            <div data-reveal className={taskGrid[task]}>
               {posts.map((post, index) => <ArchivePostCard key={post.id || post.slug} post={post} task={task} basePath={basePath} index={index} />)}
             </div>
           ) : (
@@ -159,6 +166,7 @@ export function TaskArchiveView({ task, posts, pagination, category, basePath }:
               {pagination.hasNextPage ? <Link href={pageHref(basePath, category, page + 1)} className="rounded-full border border-[var(--tk-line)] px-5 py-2.5 font-medium transition hover:border-[var(--tk-accent)]">Next</Link> : null}
             </nav>
           ) : null}
+
         </section>
       </main>
     </EditableSiteShell>
@@ -341,13 +349,16 @@ function ProfileArchiveCard({ post, href }: { post: SitePost; href: string }) {
   const role = getField(post, ['role', 'designation', 'company', 'location'])
   return (
     <Link href={href} className={`${cardBase} flex flex-col items-center p-7 text-center`}>
-      <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border border-[var(--tk-line)] bg-[var(--tk-raised)]">
+      <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border border-[var(--tk-line)] bg-[var(--tk-raised)] ring-4 ring-[var(--tk-accent-soft)]">
         {avatar ? <img src={avatar} alt="" className="h-full w-full object-cover" /> : <UserRound className="h-10 w-10 text-[var(--tk-muted)]" />}
       </div>
       <h2 className="editable-display mt-5 text-lg font-semibold tracking-[-0.02em]">{post.title}</h2>
       {role ? <p className="mt-1.5 text-xs font-medium uppercase tracking-[0.16em] text-[var(--tk-accent)]">{role}</p> : null}
-      <RatingLine post={post} center />
       <p className="mt-3 line-clamp-2 text-sm leading-6 text-[var(--tk-muted)]">{getSummary(post)}</p>
+      <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--tk-accent)]">
+        View profile
+        <ArrowUpRight className="h-4 w-4 transition duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+      </span>
     </Link>
   )
 }
